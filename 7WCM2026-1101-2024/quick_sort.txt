@@ -1,0 +1,15 @@
+function quicksort(arr, low, high):
+    if low < high:
+        pivotIndex = partition(arr, low, high)
+        quicksort(arr, low, pivotIndex - 1)    // Recursively sort left part
+        quicksort(arr, pivotIndex + 1, high)  // Recursively sort right part
+
+function partition(arr, low, high):
+    pivot = arr[high - 1]                    // Choose second-to-last element as pivot
+    i = low - 1
+    for j from low to high - 2:
+        if arr[j] <= pivot:                  // If current element is less than or equal to pivot
+            i = i + 1
+            swap(arr[i], arr[j])             // Swap the elements
+    swap(arr[i + 1], arr[high - 1])          // Place pivot in the correct position
+    return i + 1                             // Return index of the pivot
