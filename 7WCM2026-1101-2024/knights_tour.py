@@ -18,12 +18,15 @@ def get_degree(x, y, board):
             count += 1
     return count
 
-def warnsdorff(x, y, board, move_count, is_closed):
+def warnsdorff(x, y, board, move_count, is_closed, max_moves, counter, start_x, start_y):
+    if counter[0] >= max_moves:
+        return False
+    counter[0] += 1
     if move_count == N * N:
         if is_closed:
             for move in knight_moves:
                 nx, ny = x + move[0], y + move[1]
-                if nx == 0 and ny == 0:  # Check if it forms a closed tour
+                if nx == start_x and ny == start_y: 
                     return True
             return False
         else:
@@ -39,17 +42,36 @@ def warnsdorff(x, y, board, move_count, is_closed):
 
     for nx, ny, _ in next_moves:
         board[nx][ny] = move_count
-        if warnsdorff(nx, ny, board, move_count + 1, is_closed):
+        if warnsdorff(nx, ny, board, move_count + 1, is_closed, max_moves, counter, start_x, start_y):
             return True
         board[nx][ny] = -1
 
     return False
 
-def las_vegas_knights_tour(start_x, start_y):
-    board = [[-1 for _ in range(N)] for _ in range(N)]
-
+def las_vegas_closed_tour(start_x, start_y, board):
     x, y = start_x, start_y
-    board[x][y] = 0
+
+    for move_count in range(1, N * N):
+        valid_moves = []
+        can_return_to_start = False
+
+        for move in knight_moves:
+            nx, ny = x + move[0], y + move[1]
+            if is_valid_move(nx, ny, board):
+                valid_moves.append((nx, ny))
+            elif move_count == N * N - 1 and nx == start_x and ny == start_y:
+                can_return_to_start = True
+
+        if not valid_moves:
+            return False
+
+        x, y = random.choice(valid_moves)
+        board[x][y] = move_count
+
+    return can_return_to_start
+
+def las_vegas_open_tour(start_x, start_y, board):
+    x, y = start_x, start_y
 
     for move_count in range(1, N * N):
         valid_moves = []
@@ -58,7 +80,7 @@ def las_vegas_knights_tour(start_x, start_y):
             if is_valid_move(nx, ny, board):
                 valid_moves.append((nx, ny))
 
-        if not valid_moves:  # No valid moves available
+        if not valid_moves:
             return False
 
         x, y = random.choice(valid_moves)
@@ -66,23 +88,35 @@ def las_vegas_knights_tour(start_x, start_y):
 
     return True
 
-def knights_tour(is_closed, start_x, start_y, use_backtracking, max_attempts):
+def knights_tour(is_closed, start_x, start_y, use_backtracking, max_moves):
+    board = [[-1 for _ in range(N)] for _ in range(N)]
+    board[start_x][start_y] = 0
+    
     if use_backtracking:
-        for attempt in range(max_attempts):
-            board = [[-1 for _ in range(N)] for _ in range(N)]
-            board[start_x][start_y] = 0
-
-            if warnsdorff(start_x, start_y, board, 1, is_closed):
-                print(f"Solution found on attempt {attempt + 1}:")
-                for row in board:
-                    print(' '.join(f'{cell:2}' for cell in row))
-                return True
+        counter = [0]
+        if warnsdorff(start_x, start_y, board, 1, is_closed, max_moves, counter, start_x, start_y):
+            print(f"Solution found:")
+            for row in board:
+                print(' '.join(f'{cell:2}' for cell in row))
+            return True
         print("No solution found within the given attempts.")
         return False
     else:
-        if not las_vegas_knights_tour(start_x, start_y):
-            print("Las Vegas approach failed.")
+        if is_closed:
+            if las_vegas_closed_tour(start_x, start_y, board):
+                print(f"Solution found:")
+                for row in board:
+                    print(' '.join(f'{cell:2}' for cell in row))
+                return True
+            print("No solution found within the given attempts.")
             return False
+        if las_vegas_open_tour(start_x, start_y, board):
+            print(f"Solution found:")
+            for row in board:
+                print(' '.join(f'{cell:2}' for cell in row))
+            return True
+        print("No solution found within the given attempts.")
+        return False
 
 def calculate_success_rate(is_closed, start_x, start_y, use_backtracking, max_attempts):
     success = 0
@@ -110,15 +144,15 @@ def main():
         print(f"Invalid input: {e}")
         return
 
-    choice = input("Do you want a closed knight's tour? (yes/no): ").strip().lower()
-    is_closed = choice == "yes"
+    choice = input("Do you want a closed knight's tour? (y/n): ").strip().lower()
+    is_closed = choice == "y"
 
     algorithm_choice = input("Choose algorithm: backtracking or las_vegas (b/l): ").strip().lower()
     use_backtracking = algorithm_choice == "b"
 
     knights_tour(is_closed, start_x, start_y, use_backtracking, max_attempts)
 
-    if input("Do you want to calculate success rates for 10,000 trials? (yes/no): ").strip().lower() == "yes":
+    if input("Do you want to calculate success rates for 10,000 trials? (y/n): ").strip().lower() == "y":
         print("Calculating success rates...")
         backtracking_closed_rate = calculate_success_rate(True, start_x, start_y, True, max_attempts)
         backtracking_open_rate = calculate_success_rate(False, start_x, start_y, True, max_attempts)
