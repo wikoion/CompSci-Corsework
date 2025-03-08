@@ -40,7 +40,7 @@ def score_paths(paths):
                 lowest_score = score
                 best_path = i
         optimised_paths.append(copy_paths[best_path])
-        copy_paths.pop(i)
+        copy_paths.pop(best_path)
 
     return optimised_paths
 
@@ -59,7 +59,7 @@ def crossover(p1, p2):
 
     return child
 
-def mutate_paths(optimised_paths, decimal_percentage):
+def crossover_paths(optimised_paths, decimal_percentage):
     limit = max(2, round((len(optimised_paths) - 1) * decimal_percentage / 2) * 2)
     mutated = []
 
@@ -75,22 +75,24 @@ def genetic_algorithm(num_paths=100, num_locations=10, grid_size=100, mutation_r
 
     counter = 0
     
-def generation(population, mutation_rate, generations, counter=0):
+def generation(population, crossover_rate, generations, counter=0):
     optimised_paths = score_paths(population)
 
     if counter == 100:
         return optimised_paths
     
     elite = [optimised_paths[0], optimised_paths[1]]
-    mutated = mutate_paths(optimised_paths, mutation_rate)
+    crossover = crossover_paths(optimised_paths, crossover_rate)
 
-    remaining = generations - len(elite) - len(mutated)
-    remaining_pop = tourname_selection(5, optimised_paths[2:-1], remaining)#
+    remaining = generations - len(elite) - len(crossover)
+    remaining_pop = tournament_selection(5, optimised_paths[2:-1], remaining)
+
+    mutated = mutate_paths(elite+crossover+remaining_pop)
     counter += 1
-    return generation(elite+mutated+remaining_pop, mutation_rate, generations, counter)
+    return generation(mutated, crossover_rate, generations, counter)
 
 
-def tourname_selection(num_selected, paths, limit):
+def tournament_selection(num_selected, paths, limit):
     selected = []
     while len(selected) < limit:
         low = 0
@@ -105,9 +107,22 @@ def tourname_selection(num_selected, paths, limit):
         low = high
     return selected
 
+def mutate(path, mutation_rate=0.05):
+    n = max(1, round(len(path) * mutation_rate))
+    for _ in range(n):
+        i, j = random.sample(range(len(path)), 2)
+        path[i], path[j] = path[j], path[i]
+
+    return path
+
+def mutate_paths(optimised_paths, mutation_rate=0.05):
+    n = max(1, round(len(optimised_paths) * 0.1))
+    to_mutate = random.sample(range(2, len(optimised_paths)), n)
+    for i in to_mutate:
+        optimised_paths[i] = mutate(optimised_paths[i], mutation_rate)
+    return optimised_paths
 
 locations = gen_paths(100, 100, 10)
 optimised_paths = score_paths(locations)
-mutated = mutate_paths(optimised_paths, 0.1)
 gen = generation(locations, 0.1, 100)
 print(len(gen))
