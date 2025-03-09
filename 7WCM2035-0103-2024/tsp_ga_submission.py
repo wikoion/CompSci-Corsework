@@ -5,13 +5,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
+# Number of generations for the algorithm
 NUM_GENERATIONS = 100
+# Number of paths we generate each generation
 NUM_PATHS = 100
+# Size of square city grid
 GRID_SIZE = 100
+# Number of cities
 NUM_LOCATIONS = 10
+# Percentage rate of mutation
 MUTATION_RATE = 0.1
+# Percentage size of best performing population included in crossover
 CROSSOVER_RATE = 0.2
+# Size of tournament selection round 
 NUM_TOURNAMENT_SELECTION = 10
+# Number of times the algorithm will run
 NUM_EXECUTIONS = 10
 
 def main():
@@ -39,6 +47,7 @@ def main():
     print_scored_paths([best_scored_path])
     plot_best_path(best_scored_path)
 
+# Plot best path in a list using matplotlib
 def plot_best_path(best_scored_path):
     total_score = best_scored_path[0]
     best_path = np.array(best_scored_path[1])
@@ -79,6 +88,7 @@ def gen_path(grid_size, num_locations):
     locations_to_visit = list(locations_to_visit)
     return locations_to_visit
 
+# Create desired number of paths using gen_path
 def gen_paths(num_paths, grid_size, num_locations):
     paths = []
     seen = set()
@@ -91,6 +101,7 @@ def gen_paths(num_paths, grid_size, num_locations):
 
     return paths
 
+# Sums all the distances between cities in a path
 def score_path(path):
     score = 0
     for i in range(1, len(path)):
@@ -98,9 +109,11 @@ def score_path(path):
         score += round(distance)
     return score
 
+# Sorts a list of paths using score_path
 def score_paths(paths):
     return sorted(paths, key=score_path)
 
+# Take a list of paths and combine each elem with a score e.g. (100, [(12, 22)...])
 def add_path_scores(optimised_paths):
     scored_paths = []
     for path in optimised_paths:
@@ -108,12 +121,14 @@ def add_path_scores(optimised_paths):
         scored_paths.append((score, path))
     return scored_paths
 
+# Pretty print paths with their score up to a given limit
 def print_scored_paths(paths, num_to_print=10):
     for i in range(len(paths)):
         if i == num_to_print:
             break
         print("Score: ", paths[i][0], " for path:\n", paths[i][1])
 
+# Cut and combine 2 paths at a random point ensuring no duplicate cities
 def crossover(p1, p2):
     p1_len = len(p1)
     c1, c2 = sorted(random.sample(range(p1_len), 2))
@@ -129,6 +144,7 @@ def crossover(p1, p2):
 
     return child
 
+# Call crossover on a list of ordered paths
 def crossover_paths(optimised_paths, decimal_percentage):
     limit = max(2, round((len(optimised_paths) - 1) * decimal_percentage / 2) * 2)
     mutated = set()
@@ -151,7 +167,8 @@ def crossover_paths(optimised_paths, decimal_percentage):
         new_children.append(random.choice(optimised_paths))
 
     return new_children
-    
+
+# Main algorithm entrypoint    
 def genetic_algorithm(population, crossover_rate, mutation_rate, generations, tournament_selection_num, counter=0):
     optimised_paths = score_paths(population)
 
@@ -168,7 +185,7 @@ def genetic_algorithm(population, crossover_rate, mutation_rate, generations, to
     counter += 1
     return genetic_algorithm(mutated, crossover_rate, mutation_rate, generations, tournament_selection_num, counter)
 
-
+# Pick the lowest score out of a given number of generated paths
 def tournament_selection(num_selected, paths, limit):
     selected = []
     
@@ -179,6 +196,7 @@ def tournament_selection(num_selected, paths, limit):
 
     return selected
 
+# Randomly swap citie/s in a path, at a given rate
 def mutate(path, mutation_rate):
     n = max(1, round(len(path) * mutation_rate))
     for _ in range(n):
@@ -187,6 +205,7 @@ def mutate(path, mutation_rate):
 
     return path
 
+# Call mutate on a list of paths
 def mutate_paths(optimised_paths, mutation_rate):
     n = max(1, round(len(optimised_paths) * 0.1))
     to_mutate = random.sample(range(2, len(optimised_paths)), n)
