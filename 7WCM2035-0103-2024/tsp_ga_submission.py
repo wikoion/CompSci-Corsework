@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 # Number of generations for the algorithm
-NUM_GENERATIONS = 100
+NUM_GENERATIONS = 950
 # Number of paths we generate each generation
 NUM_PATHS = 100
 # Size of square city grid
@@ -14,11 +14,13 @@ GRID_SIZE = 100
 # Number of cities
 NUM_LOCATIONS = 10
 # Percentage rate of mutation
-MUTATION_RATE = 0.1
+MUTATION_RATE = 0.2
 # Percentage size of best performing population included in crossover
 CROSSOVER_RATE = 0.2
-# Size of tournament selection round 
-NUM_TOURNAMENT_SELECTION = 10
+# Percentage of population to be selected per tournament selection round 
+TOURNAMENT_SELECTION_RATE = 0.1
+# Percentage chance to introduce a random path
+TOURNAMENT_SELECTION_RANDOM_PATH_RATE = 0.01
 # Number of times the algorithm will run
 NUM_EXECUTIONS = 10
 
@@ -29,7 +31,16 @@ def main():
     start = time.time()
     for i in range(1, NUM_EXECUTIONS):
         it_start = time.time()
-        ga = genetic_algorithm(initial_population, CROSSOVER_RATE, MUTATION_RATE, NUM_GENERATIONS, NUM_TOURNAMENT_SELECTION)
+        ga = genetic_algorithm(
+            initial_population, 
+            CROSSOVER_RATE, 
+            MUTATION_RATE, 
+            NUM_GENERATIONS, 
+            TOURNAMENT_SELECTION_RATE,
+            TOURNAMENT_SELECTION_RANDOM_PATH_RATE,
+            GRID_SIZE,
+            NUM_LOCATIONS,
+        )
         scored_path = add_path_scores(ga)[0]
 
         if len(best_scored_path) == 0:
@@ -106,8 +117,11 @@ def score_path(path):
     score = 0
     for i in range(1, len(path)):
         distance = math.hypot(path[i-1][0] - path[i][0], path[i-1][1] - path[i][1])
-        score += round(distance)
-    return score
+        score += distance
+    
+    distance_to_start = math.hypot(path[-1][0] - path[0][0], path[-1][1] - path[0][1])
+    score += distance_to_start
+    return round(score)
 
 # Sorts a list of paths using score_path
 def score_paths(paths):
@@ -169,7 +183,17 @@ def crossover_paths(optimised_paths, decimal_percentage):
     return new_children
 
 # Main algorithm entrypoint    
-def genetic_algorithm(population, crossover_rate, mutation_rate, generations, tournament_selection_num, counter=0):
+def genetic_algorithm(
+    population, 
+    crossover_rate, 
+    mutation_rate, 
+    generations, 
+    tournament_selection_rate, 
+    tournament_selection_random_path_rate,
+    grid_size,
+    num_locations,
+    counter=0,
+):
     optimised_paths = score_paths(population)
 
     if counter == generations:
@@ -178,22 +202,44 @@ def genetic_algorithm(population, crossover_rate, mutation_rate, generations, to
     elite = [optimised_paths[0], optimised_paths[1]]
     crossover = crossover_paths(optimised_paths, crossover_rate)
 
-    remaining = generations - len(elite) - len(crossover)
-    remaining_pop = tournament_selection(tournament_selection_num, optimised_paths[2:-1], remaining)
+    i = len(elite) + len(crossover) - 1
+    remaining_pop = tournament_selection(
+        tournament_selection_rate, 
+        optimised_paths[i:-1], 
+        tournament_selection_random_path_rate,
+        grid_size,
+        num_locations,
+    )
 
     mutated = mutate_paths(elite+crossover+remaining_pop, mutation_rate)
     counter += 1
-    return genetic_algorithm(mutated, crossover_rate, mutation_rate, generations, tournament_selection_num, counter)
+    return genetic_algorithm(
+        mutated, 
+        crossover_rate, 
+        mutation_rate, 
+        generations, 
+        tournament_selection_rate, 
+        tournament_selection_random_path_rate,
+        grid_size,
+        num_locations,
+        counter
+    )
 
 # Pick the lowest score out of a given number of generated paths
-def tournament_selection(num_selected, paths, limit):
+def tournament_selection(selection_rate, paths, random_path_rate, grid_size, num_locations):
     selected = []
-    
-    while len(selected) < limit:
-        tournament = random.sample(paths, min(num_selected, len(paths)))
-        best_path = min(tournament, key=score_path)
-        selected.append(best_path)
+    round_size = max(2, int(len(paths) * selection_rate))
 
+    while len(selected) < len(paths):
+        if random.random() < random_path_rate:
+            new_path = gen_path(grid_size, num_locations)
+            if new_path not in selected:
+                selected.append(new_path)
+        else:
+            candidate = random.choice(paths)
+            if candidate not in selected:
+                selected.append(candidate)
+    
     return selected
 
 # Randomly swap citie/s in a path, at a given rate
