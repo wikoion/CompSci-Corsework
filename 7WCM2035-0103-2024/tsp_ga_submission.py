@@ -1,12 +1,53 @@
 import random
 import math
 import copy
+import matplotlib.pyplot as plt
+import numpy as np
+
+NUM_GENERATIONS = 100
+NUM_PATHS = 1000
+GRID_SIZE = 100
+NUM_LOCATIONS = 10
+MUTATION_RATE = 0.1
+CROSSOVER_RATE = 0.2
+NUM_TOURNAMENT_SELECTION = 10
 
 def main():
-    locations = gen_paths(100, 100, 10)
-    ga = genetic_algorithm(locations, 0.1, 100)
+    initial_population = gen_paths(NUM_PATHS, GRID_SIZE, NUM_LOCATIONS)
+    ga = genetic_algorithm(initial_population, CROSSOVER_RATE, MUTATION_RATE, NUM_GENERATIONS, NUM_TOURNAMENT_SELECTION)
+
     scored_paths = add_path_scores(ga)
-    print_scored_paths(scored_paths)
+
+    print("Best path with ", NUM_PATHS, " paths:")
+    print_scored_paths(scored_paths, 1)
+    plot_best_path(scored_paths[0])
+
+def plot_best_path(best_scored_path):
+    total_score = best_scored_path[0]
+    best_path = np.array(best_scored_path[1])
+    
+    best_path = np.vstack([best_path, best_path[0]])  
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(best_path[:, 0], best_path[:, 1], 'o-', linestyle="-", color="b", label='TSP Path')
+    plt.scatter(best_path[:, 0], best_path[:, 1], color="r", marker="o", label="Cities")
+
+    for i, (x, y) in enumerate(best_path):
+        if i < len(best_path) -1:
+            x1, y1 = best_path[i]
+            x2, y2 = best_path[i + 1]
+            plt.text(x, y, str(i), fontsize=12, ha='right')
+
+            mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+            distance = round(math.hypot(x2 - x1, y2 - y1))
+            plt.text(mid_x, mid_y, str(distance), fontsize=10, ha='center', color="green")
+
+    plt.xticks([])
+    plt.yticks([])
+
+    plt.title(f"TSP Solution (Total Distance: {total_score})", fontsize=14)
+    plt.legend()
+    plt.show()
 
 # Generation logic copied from rubrick
 def gen_path(grid_size, num_locations):
@@ -22,10 +63,12 @@ def gen_path(grid_size, num_locations):
     return locations_to_visit
 
 def gen_paths(num_paths, grid_size, num_locations):
-    paths = []
-    for i in range(1, num_paths):
-        paths.append(gen_path(grid_size, num_locations))
-    return paths
+    paths = set()
+    while len(paths) < num_paths:
+        path = tuple(gen_path(grid_size, num_locations))
+        paths.add(path)
+
+    return [list(p) for p in paths]
 
 def score_path(path):
     score = 0
@@ -77,36 +120,43 @@ def crossover(p1, p2):
     return child
 
 def crossover_paths(optimised_paths, decimal_percentage):
-    limit = max(2, round((len(optimised_paths)) * decimal_percentage / 2) * 2)
-    mutated = []
+    limit = max(2, round((len(optimised_paths) - 1) * decimal_percentage / 2) * 2)
+    mutated = set()
+    new_children = []
 
-    for i in range(0, limit-1):
-        p1 = optimised_paths[i]
-        p2 = optimised_paths[i+1]
+    attempts = 0
+    max_attempts = limit * 2
 
-        mutated.append(crossover(p1, p2))
-    return mutated
+    while len(new_children) < limit and attempts < max_attempts:
+        p1, p2 = random.sample(optimised_paths, 2)
+        child = tuple(crossover(p1, p2))
+        
+        if child not in mutated:
+            mutated.add(child)
+            new_children.append(list(child))
+        
+        attempts += 1
 
-def genetic_algorithm(num_paths=100, num_locations=10, grid_size=100, mutation_rate=0.1, generations=100):
-    cities = gen_paths(num_paths, grid_size, num_locations)
+    while len(new_children) < limit:
+        new_children.append(random.choice(optimised_paths))
 
-    counter = 0
+    return new_children
     
-def genetic_algorithm(population, crossover_rate, generations, counter=0, limit=100):
+def genetic_algorithm(population, crossover_rate, mutation_rate, generations, tournament_selection_num, counter=0):
     optimised_paths = score_paths(population)
 
-    if counter == limit:
+    if counter == generations:
         return optimised_paths
     
     elite = [optimised_paths[0], optimised_paths[1]]
     crossover = crossover_paths(optimised_paths, crossover_rate)
 
     remaining = generations - len(elite) - len(crossover)
-    remaining_pop = tournament_selection(5, optimised_paths[2:-1], remaining)
+    remaining_pop = tournament_selection(tournament_selection_num, optimised_paths[2:-1], remaining)
 
-    mutated = mutate_paths(elite+crossover+remaining_pop)
+    mutated = mutate_paths(elite+crossover+remaining_pop, mutation_rate)
     counter += 1
-    return genetic_algorithm(mutated, crossover_rate, generations, counter)
+    return genetic_algorithm(mutated, crossover_rate, mutation_rate, generations, tournament_selection_num, counter)
 
 
 def tournament_selection(num_selected, paths, limit):
@@ -124,7 +174,7 @@ def tournament_selection(num_selected, paths, limit):
         low = high
     return selected
 
-def mutate(path, mutation_rate=0.05):
+def mutate(path, mutation_rate):
     n = max(1, round(len(path) * mutation_rate))
     for _ in range(n):
         i, j = random.sample(range(len(path)), 2)
@@ -132,7 +182,7 @@ def mutate(path, mutation_rate=0.05):
 
     return path
 
-def mutate_paths(optimised_paths, mutation_rate=0.05):
+def mutate_paths(optimised_paths, mutation_rate):
     n = max(1, round(len(optimised_paths) * 0.1))
     to_mutate = random.sample(range(2, len(optimised_paths)), n)
     for i in to_mutate:
