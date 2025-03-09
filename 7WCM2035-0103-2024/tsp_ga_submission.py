@@ -80,12 +80,16 @@ def gen_path(grid_size, num_locations):
     return locations_to_visit
 
 def gen_paths(num_paths, grid_size, num_locations):
-    paths = set()
+    paths = []
+    seen = set()
+
     while len(paths) < num_paths:
         path = tuple(gen_path(grid_size, num_locations))
-        paths.add(path)
+        if path not in seen:
+            seen.add(path)
+            paths.append(list(path))
 
-    return [list(p) for p in paths]
+    return paths
 
 def score_path(path):
     score = 0
@@ -95,20 +99,7 @@ def score_path(path):
     return score
 
 def score_paths(paths):
-    copy_paths = copy.deepcopy(paths)
-    optimised_paths = []
-    while len(copy_paths) > 0:
-        lowest_score = 0
-        best_path = 0
-        for i in range(0, len(copy_paths)):
-            score = score_path(copy_paths[i])
-            if lowest_score == 0 or score < lowest_score:
-                lowest_score = score
-                best_path = i
-        optimised_paths.append(copy_paths[best_path])
-        copy_paths.pop(best_path)
-
-    return optimised_paths
+    return sorted(paths, key=score_path)
 
 def add_path_scores(optimised_paths):
     scored_paths = []
@@ -180,17 +171,12 @@ def genetic_algorithm(population, crossover_rate, mutation_rate, generations, to
 
 def tournament_selection(num_selected, paths, limit):
     selected = []
+    
     while len(selected) < limit:
-        low = 0
-        high = 0
-        if (high + num_selected) > len(paths):
-            high = len(paths)
-        else:
-            high += num_selected 
-        
-        optimised_paths = score_paths(paths[low:high])
-        selected.append(optimised_paths[0])
-        low = high
+        tournament = random.sample(paths, min(num_selected, len(paths)))
+        best_path = min(tournament, key=score_path)
+        selected.append(best_path)
+
     return selected
 
 def mutate(path, mutation_rate):
