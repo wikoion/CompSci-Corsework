@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 # Number of generations for the algorithm
-NUM_GENERATIONS = 950
+NUM_GENERATIONS = 100
 # Number of paths we generate each generation
 NUM_PATHS = 100
 # Size of square city grid
@@ -22,7 +22,7 @@ TOURNAMENT_SELECTION_RATE = 0.1
 # Percentage chance to introduce a random path
 TOURNAMENT_SELECTION_RANDOM_PATH_RATE = 0.01
 # Number of times the algorithm will run
-NUM_EXECUTIONS = 10
+NUM_EXECUTIONS = 100
 
 def main():
     initial_population = gen_paths(NUM_PATHS, GRID_SIZE, NUM_LOCATIONS)
