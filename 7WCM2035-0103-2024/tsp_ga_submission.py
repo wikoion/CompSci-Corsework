@@ -3,24 +3,41 @@ import math
 import copy
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 NUM_GENERATIONS = 100
-NUM_PATHS = 1000
+NUM_PATHS = 100
 GRID_SIZE = 100
 NUM_LOCATIONS = 10
 MUTATION_RATE = 0.1
 CROSSOVER_RATE = 0.2
 NUM_TOURNAMENT_SELECTION = 10
+NUM_EXECUTIONS = 10
 
 def main():
     initial_population = gen_paths(NUM_PATHS, GRID_SIZE, NUM_LOCATIONS)
-    ga = genetic_algorithm(initial_population, CROSSOVER_RATE, MUTATION_RATE, NUM_GENERATIONS, NUM_TOURNAMENT_SELECTION)
 
-    scored_paths = add_path_scores(ga)
+    best_scored_path = ()
+    start = time.time()
+    for i in range(1, NUM_EXECUTIONS):
+        it_start = time.time()
+        ga = genetic_algorithm(initial_population, CROSSOVER_RATE, MUTATION_RATE, NUM_GENERATIONS, NUM_TOURNAMENT_SELECTION)
+        scored_path = add_path_scores(ga)[0]
 
-    print("Best path with ", NUM_PATHS, " paths:")
-    print_scored_paths(scored_paths, 1)
-    plot_best_path(scored_paths[0])
+        if len(best_scored_path) == 0:
+            best_scored_path = scored_path
+        elif scored_path[0] < best_scored_path[0]:
+            best_scored_path = scored_path
+
+        it_end = time.time()
+        print("Best path from run ", i, "elapsed time:", it_end-it_start, "seconds")
+        print_scored_paths([scored_path])
+
+    end = time.time()
+
+    print("Best path in ", NUM_EXECUTIONS, " executions, total elapsed time:", end-start, "seconds")
+    print_scored_paths([best_scored_path])
+    plot_best_path(best_scored_path)
 
 def plot_best_path(best_scored_path):
     total_score = best_scored_path[0]
@@ -100,9 +117,11 @@ def add_path_scores(optimised_paths):
         scored_paths.append((score, path))
     return scored_paths
 
-def print_scored_paths(scored_paths, num_to_print=10):
-    for i in range(num_to_print):
-        print("Score: ", scored_paths[i][0], " for path:\n", scored_paths[i][1])
+def print_scored_paths(paths, num_to_print=10):
+    for i in range(len(paths)):
+        if i == num_to_print:
+            break
+        print("Score: ", paths[i][0], " for path:\n", paths[i][1])
 
 def crossover(p1, p2):
     p1_len = len(p1)
